@@ -19,3 +19,5 @@
 void AddClient(int s, struct sockaddr_in *newcliaddr);
 void RemoveClient(int s);
 void* MainThread(void* args);
+int TCPListen(int host, int port, int backlog);
+int FindMaxNumber();
