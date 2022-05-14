@@ -105,18 +105,52 @@ int TCPListen(int host, int port, int backlog)
     
     struct sockaddr_in socketaddr;
 
-    /*  int socket(int domain, int type, int protocol);
+/*  int socket(int domain, int type, int protocol);
 *   Header :    #include <arpa/inet.h>
 *   parameter : domain : 프로토콜의 정보
 *               type : 소켓의 형태를 지정 (SOCK_STREAM(TCP), SOCK_DGRAM(UDP), SOCK_RAW)
 *               protocol : 실제로 사용할 매개변수 지정 (IPPROTO_TCP, IPPROTO_UDP, IPPROTO_HOPOPTS(Auto))
-*   returrn :  
+*   returrn :  ㄹ
 *   Description : IPv4 or IPv6의 주소를 Binary 형태에서 사람이 알아볼 수 있는 문자열로 변환
 *                 Network Adress 구조체인 src를 Charcter String으로 변환해주는 함수
 *
 *   AF_INET     : struct in_addr 구조체를 가리킴
 */    
     int sd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if(sd == 1)
+    {
+        perror("Socket Fail!");
+        exit(1);
+    }
+
+
+/*  void memset(void* ptr, int value, size_t num);
+*   Header :    #include <string.h>
+*   parameter : ptr : 메모리의 크기를 변경할 포인터
+*               value : 메모리를 초기화할 값
+*               size : 초기화 후 크기 반환 값
+*   returrn :  성공 시 ptr을 반환, 실패 시 NULL 반환
+*   Description : 메모리의 값을 원하는 크기만큼 특정 값으로 세팅할 수 있는 함수
+*/  
+    memset(&socketaddr, 0, sizeof(socketaddr));
+    socketaddr.sin_family = AF_INET;
+    socketaddr.sin_addr.s_addr = htonl(host);
+    socketaddr.sin_port = htons(port);
+    
+    
+/*  int bind(int sockfd, struct sockaddr* myaddr, socklen_t addrlen);
+*   Header :    #include <sys/types.h>, <sys/socket.h>
+*   parameter : sockfd : 소켓 디스크립터
+*               struct sockaddr* addr : 주소 정보
+*               socklen_t addrlen : 구조체의 크기
+*   returrn :  성공 시 0, 실패 시 1 반환
+*   Description : 소켓에 IP 주소와 포트번호 지정 함수
+*/
+    if(bind(sd, (struct sockaddr *)&socketaddr, sizeof(socketaddr)) < 0)
+    {
+        perror("Bind Fail!");
+    }
 }
 
 int FindMaxNumber()
