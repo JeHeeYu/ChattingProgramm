@@ -7,12 +7,116 @@ char* endString = END_STRING;
 
 int usersNumber = 0;
 int chattingsNumber = 0;
-int socketListen;
 
 int usersList[MAX_LENGTH];
 char ipList[MAX_LENGTH][20];
 
+int socketListen;
+int maxSocket;
+
 time_t m_timer;
+
+int main(int argc, char *argv[])
+{
+    struct sockaddr_in clientaddr;
+
+    char buffer[MAX_LINE + 1];
+
+    int socketListen, socketAccept, addrlength;
+
+    int i, j, nbyte;
+    
+    fd_set readFd;
+    pthread_t mainThread;
+
+    if(argc != 2)
+    {
+        printf("사용법 : %s port\n", argv[0]);
+        exit(0);
+    }
+
+    // TCP 함수 대기
+    socketListen = TCPListen(INADDR_ANY, atoi(argv[1]), 5);
+
+    // 메인 스레드 생성
+    pthread_create(&mainThread, NULL, MainThread, (void *)NULL);
+
+    while(1)
+    {
+        FD_ZERO(&readFd);
+        FD_SET(socketListen, &readFd);
+
+        for(i = 0; i < usersNumber; i++)
+        {
+            FD_SET(usersList[i], &readFd);
+        }
+    }
+
+    if(select(maxSocket, &readFd, NULL, NULL, NULL) < 0)
+    {
+        ErrorHandler("Select is Fail!");
+    }
+
+    if(FD_ISSET(socketListen, &readFd))
+    {
+        socketAccept = accept(socketListen, (struct sockaddr*)&clientaddr, &addrlength);
+
+        if(socketAccept == -1)
+        {
+            ErrorHandler("Accept is Fail");
+        }
+
+        AddClient(socketAccept, &clientaddr);
+        send(socketAccept, START_STRING, strlen(START_STRING), 0);
+
+        m_timer = time(NULL);
+        m_tm = *localtime(&m_timer);
+
+        write(1, "\033[0G", 4);
+
+        printf("[%02d:%02d:%02d]", m_tm.tm_hour, m_tm.tm_min, m_tm.tm_sec);
+        fprintf(stderr, "\033[33m");
+        printf("사용자 1명 추가, 현재 참가자 수 : %d\n", usersNumber);
+        fprintf(stderr, "\033[32m");
+        fprintf(stderr, "server>");
+    }
+
+    for(i = 0; i < usersNumber; i++)
+    {
+        if(FD_ISSET(usersList[i], &readFd))
+        {
+            chattingsNumber++;
+            nbyte = recv(usersList[i], buffer, MAX_LINE, 0);
+            if(nbyte <= 0)
+            {
+                RemoveClient(i);
+                continue;
+            }
+
+            buffer[nbyte] = 0;
+
+            if(strstr(buffer, END_STRING) != NULL)
+            {
+                RemoveClient(i);
+                continue;
+            }
+
+            for(j = 0; j < usersNumber; j++)
+            {
+                send(usersList[i], buffer, nbyte, 0);
+            }
+
+            printf("\033[0G");		
+            fprintf(stderr, "\033[97m");
+            printf("%s", buffer);		
+            fprintf(stderr, "\033[32m");
+            fprintf(stderr, "server>");
+            
+        }
+    }
+
+    return 0;
+}
 
 // 채팅방의 명령어를 처리하는 메인 스레드
 void* MainThread(void* args)
@@ -151,6 +255,17 @@ int TCPListen(int host, int port, int backlog)
     {
         perror("Bind Fail!");
     }
+
+/*  int listen(int sock, int backlog);
+*   Header :    #include <sys/types.h>, <sys/socket.h>
+*   parameter : sock : 소켓 식별자 또는 소켓 디스크립터
+*               backlog : 연결 요청을 대기시킬 공간 설정(백로그 큐)
+*   returrn :  성공 시 0, 실패 시 1 반환
+*   Description : 소켓 연결 요청을 대기하는 함수
+*/
+    listen(sd, backlog);
+
+    return sd;
 }
 
 int FindMaxNumber()
@@ -167,4 +282,10 @@ int FindMaxNumber()
     }
 
     return max;
+}
+
+void ErrorHandler(char* msg)
+{
+    perror(msg);
+    exit(1);
 }
